@@ -20,6 +20,7 @@ try:
 except ImportError:
     from ordereddict import OrderedDict
 import hashlib
+import logging
 import os
 import sys
 import uuid
@@ -526,6 +527,21 @@ class ShellTest(testutils.TestCase):
         # We expect the normal usage as a result
         self.assertIn('Command-line interface to the OpenStack Images API',
                       sys.stdout.getvalue())
+
+    @mock.patch('glanceclient.v2.client.Client')
+    @mock.patch('glanceclient.v1.images.ImageManager.list')
+    def test_setup_debug(self, v1_imgs, v2_client):
+        self.make_env()
+        cli2 = mock.MagicMock()
+        v2_client.return_value = cli2
+        cli2.http_client.get.return_value = (None, {'versions': []})
+        args = '--debug image-list'
+        glance_shell = openstack_shell.OpenStackImagesShell()
+        glance_shell.main(args.split())
+        glance_logger = logging.getLogger('glanceclient')
+        ks_logger = logging.getLogger('keystoneclient')
+        self.assertEqual(glance_logger.getEffectiveLevel(), logging.DEBUG)
+        self.assertEqual(ks_logger.getEffectiveLevel(), logging.DEBUG)
 
 
 class ShellTestWithKeystoneV3Auth(ShellTest):

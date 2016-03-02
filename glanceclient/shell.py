@@ -48,6 +48,9 @@ osprofiler_profiler = importutils.try_import("osprofiler.profiler")
 
 SUPPORTED_VERSIONS = [1, 2]
 
+# set up default stream handler for root logger
+logging.basicConfig()
+
 
 class OpenStackImagesShell(object):
 
@@ -483,6 +486,17 @@ class OpenStackImagesShell(object):
 
         return failed_download_schema >= len(resources)
 
+    def _setup_debug(self, debug):
+        LOG = logging.getLogger('glanceclient')
+        LOG.addHandler(logging.StreamHandler())
+        if debug:
+            LOG.setLevel(logging.DEBUG)
+            # required for logging when using a keystone session
+            ks_logger = logging.getLogger("keystoneclient")
+            ks_logger.setLevel(logging.DEBUG)
+        else:
+            LOG.setLevel(logging.INFO)
+
     def main(self, argv):
 
         def _get_subparser(api_version):
@@ -581,9 +595,7 @@ class OpenStackImagesShell(object):
         if not args.os_password and options.os_password:
             args.os_password = options.os_password
 
-        LOG = logging.getLogger('glanceclient')
-        LOG.addHandler(logging.StreamHandler())
-        LOG.setLevel(logging.DEBUG if args.debug else logging.INFO)
+        self._setup_debug(args.debug)
 
         profile = osprofiler_profiler and options.profile
         if profile:
